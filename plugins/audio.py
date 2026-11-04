@@ -48,7 +48,10 @@ async def audio_actions(client, query: CallbackQuery):
     elif action == "src":
         try:
             prompt = await client.send_message(query.message.chat.id, "🎯 **Send the Chat ID (Source):**\n*(e.g., -100123456)*\n\nType /cancel to abort.")
-            response = await client.listen(query.message.chat.id, timeout=60, filters=filters.text)
+            
+            # FIXED: Positional arguments
+            response = await client.listen(query.message.chat.id, filters.text, 60)
+            
             if response.text.strip().lower() == "/cancel": return await response.reply_text("❌ Cancelled.")
             chat_id = int(response.text.strip())
             await db.users.update_one({"_id": user_id}, {"$set": {"record_group_id": chat_id}})
