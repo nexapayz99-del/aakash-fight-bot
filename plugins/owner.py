@@ -1,9 +1,9 @@
 # plugins/owner.py
+import asyncio, os, sys
 from pyrogram import Client, filters
-from pyrogram.types import CallbackQuery
+from pyrogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from database.mongo import db
 from config import Config
-import os, sys
 
 @Client.on_callback_query(filters.regex(r"^(approve|ban)_(\d+)$"))
 async def handle_approval(client, query: CallbackQuery):
@@ -12,39 +12,74 @@ async def handle_approval(client, query: CallbackQuery):
     await query.answer()
     action, target_id = query.data.split("_")
     target_id = int(target_id)
-    
+
     try:
         if action == "approve":
             await db.approve_user(target_id)
             await query.message.edit_text(f"✅ User {target_id} Approved!")
-            try: await client.send_message(target_id, "✅ <b>Your access has been approved!</b>\nSend /start to begin.")
-            except: pass
+            try:
+                await client.send_message(target_id, "✅ <b>Your access has been approved!</b>\nSend /start to begin.")
+            except Exception:
+                pass
         elif action == "ban":
             await db.users.update_one({"_id": target_id}, {"$set": {"is_banned": True}}, upsert=True)
             await query.message.edit_text(f"🚫 User {target_id} Banned!")
     except Exception as e:
-        print(f"[Approval] {e}")
+        print(f"[handle_approval] {e}")
 
 @Client.on_callback_query(filters.regex(r"^own_"))
 async def owner_panel_actions(client, query: CallbackQuery):
     if query.from_user.id != Config.OWNER_ID:
         return await query.answer("❌ Not authorized", show_alert=True)
     await query.answer()
-    
-    action = query.data.split("_")[1]
-    
+    action = query.data.split("_", 1)[1]
+
+    # Approve / Remove / Ban / Unban — prompt for user ID
+    if action in ("approve", "remove", "ban", "unban"):
+        try:
+            prompt = await client.send_message(
+                query.message.chat.id,
+                f"👑 <b>Send the User ID to {action}:</b>\n\nType /cancel to abort."
+            )
+            response = await client.listen(
+                chat_id=query.message.chat.id,
+                timeout=60,
+                filters=filters.text
+            )
+            if response.text.strip().lower() == "/cancel":
+                return await response.reply_text("❌ Cancelled.")
+            target_id = int(response.text.strip())
+
+            if action == "approve":
+                await db.approve_user(target_id)
+                await response.reply_text(f"✅ Approved {target_id}")
+                try: await client.send_message(target_id, "✅ <b>Approved!</b>")
+                except: pass
+            elif action == "remove":
+                await db.users.update_one({"_id": target_id}, {"$set": {"is_approved": False}}, upsert=True)
+                await response.reply_text(f"❌ Removed access for {target_id}")
+            elif action == "ban":
+                await db.users.update_one({"_id": target_id}, {"$set": {"is_banned": True}}, upsert=True)
+                await response.reply_text(f"🚫 Banned {target_id}")
+            elif action == "unban":
+                await db.users.update_one({"_id": target_id}, {"$set": {"is_banned": False}}, upsert=True)
+                await response.reply_text(f"🟢 Unbanned {target_id}")
+        except (asyncio.TimeoutError, ValueError):
+            await prompt.edit_text("❌ Invalid input or timeout.")
+        return
+
     if action == "users":
         users = await db.users.find({"is_approved": True}).to_list(100)
-        text = f"📋 **Total Approved Users: {len(users)}**\n\n"
-        for u in users[:10]: # Show first 10
+        text = f"📋 <b>Total Approved Users: {len(users)}</b>\n\n"
+        for u in users[:15]:
             text += f"🆔 <code>{u['_id']}</code>\n"
-        if len(users) > 10: text += "\n*(Only showing first 10)*"
+        if len(users) > 15:
+            text += f"\n<i>Showing 15 of {len(users)}</i>"
         await query.message.edit_text(text)
-        
-    elif action == "restart":
-        await query.message.edit_text("🔄 **Restarting Bot...**")
+        return
+
+    if action == "restart":
+        await query.message.edit_text("🔄 <b>Restarting Bot...</b>")
+        await asyncio.sleep(1)
         os.execl(sys.executable, sys.executable, *sys.argv)
-        
-    else:
-        # Placeholder for prompt-based owner actions (Ban/Unban)
-        await query.message.reply_text(f"⚙️ Action `{action}` triggered. (Requires user ID prompt implementation)")
+        return
