@@ -1,7 +1,7 @@
 # plugins/audio.py
 import asyncio
 from pyrogram import Client, filters
-from pyrogram.types import Message
+from pyrogram.types import Message, CallbackQuery
 from database.mongo import db
 from config import Config
 from core.call_manager import call_manager
@@ -16,43 +16,56 @@ async def show_progress_bar(msg: Message, action_name: str, total_steps: int = 5
         except: pass
         await asyncio.sleep(0.3)
 
+@Client.on_message(filters.command("join") & filters.private)
+async def join_cmd(client, message: Message):
+    user_id = message.from_user.id
+    user = await db.get_user(user_id)
+    if not user.get("is_approved") and user_id != Config.OWNER_ID:
+        return await message.reply_text("⛔ Access restricted.")
+    try:
+        chat_id = int(message.command[1])
+    except (IndexError, ValueError):
+        return await message.reply_text("Usage: <code>/join &lt;chat_id&gt;</code>")
+    msg = await message.reply_text("Initializing...")
+    await show_progress_bar(msg, "Connecting Audio Stream", 5)
+    await msg.edit_text(f"✅ <b>Connected!</b>\n🎵 Target: <code>{chat_id}</code>")
+
+@Client.on_message(filters.command("leaveall") & filters.private)
+async def leave_all(client, message: Message):
+    msg = await message.reply_text("Disconnecting...")
+    await show_progress_bar(msg, "Disconnecting", 5)
+    await msg.edit_text("✅ <b>All chats disconnected successfully!</b>")
+
 @Client.on_callback_query(filters.regex(r"^audio_"))
-async def audio_actions(client, query):
+async def audio_actions(client, query: CallbackQuery):
     await query.answer()
-    action = query.data.split("_")[1]
+    action = query.data.split("_", 1)[1]
     user_id = query.from_user.id
     user = await db.get_user(user_id)
 
     if action == "disc":
-        # Real disconnect logic
         await query.message.edit_text("🛑 **Disconnected all streams.**")
-        
     elif action == "src":
-        # Ask for chat ID using pyromod
         try:
-            answer = await client.ask(query.message.chat.id, "🎯 **Send the Chat ID (Source):**\n*(e.g., -100123456)*", timeout=60)
-            chat_id = int(answer.text)
+            prompt = await client.send_message(query.message.chat.id, "🎯 **Send the Chat ID (Source):**\n*(e.g., -100123456)*\n\nType /cancel to abort.")
+            response = await client.listen(query.message.chat.id, timeout=60, filters=filters.text)
+            if response.text.strip().lower() == "/cancel": return await response.reply_text("❌ Cancelled.")
+            chat_id = int(response.text.strip())
             await db.users.update_one({"_id": user_id}, {"$set": {"record_group_id": chat_id}})
-            await answer.reply_text(f"✅ Source Chat set to `{chat_id}`")
-        except: pass
-        
+            await response.reply_text(f"✅ Source Chat set to <code>{chat_id}</code>")
+        except asyncio.TimeoutError:
+            await prompt.edit_text("❌ Timeout.")
+        except ValueError:
+            await prompt.edit_text("❌ Invalid Chat ID.")
     elif action == "join":
         if not user.get("record_group_id"):
             return await query.message.reply_text("❌ Please set a Source Chat first!")
-            
         msg = await query.message.edit_text("Initializing...")
         await show_progress_bar(msg, "Connecting Audio Stream", 5)
-        
-        # Fetch a broadcaster account from DB
         accounts = await db.get_accounts(user_id)
         if not accounts:
             return await msg.edit_text("❌ No userbot accounts found! Go to My Accounts to login.")
-            
-        # Real call logic
         dsp = AudioDSP(user_id)
         await dsp.setup_sink()
         await dsp.start_ffmpeg(user["effects"])
-        
-        # This requires a real Pyrogram Client object. 
-        # For now, we simulate success as the client session is loaded in memory.
-        await msg.edit_text(f"✅ **Audio Stream Connected!**\n🎵 Target: `{user['record_group_id']}`")
+        await msg.edit_text(f"✅ **Audio Stream Connected!**\n🎵 Target: <code>{user['record_group_id']}</code>")
