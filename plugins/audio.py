@@ -4,21 +4,17 @@ from pyrogram import Client, filters
 from pyrogram.types import Message
 from database.mongo import db
 from config import Config
-# Import call_manager for future use
 from core.call_manager import call_manager
 
-async def progress_bar(message, current, total, action_text="Processing"):
-    percent = int((current / total) * 100)
-    filled = int(percent / 10)
-    bar = "█" * filled + "░" * (10 - filled)
-    text = (
-        f"⚙️ <b>{action_text}...</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"[{bar}] {percent}%\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"Please wait..."
-    )
-    await message.edit_text(text)
+async def show_progress_bar(msg: Message, action_name: str, total_steps: int = 5):
+    for step in range(1, total_steps + 1):
+        percent = int((step / total_steps) * 100)
+        bar = f"[{'█' * step}{'░' * (total_steps - step)}] {percent}%"
+        try:
+            await msg.edit_text(f"⚙️ <b>{action_name}...</b>\n━━━━━━━━━━━━━━━━━━━━\n{bar}\n━━━━━━━━━━━━━━━━━━━━\nPlease wait...")
+        except Exception:
+            pass
+        await asyncio.sleep(0.3)
 
 @Client.on_message(filters.command("join") & filters.private)
 async def join_cmd(client, message: Message):
@@ -30,18 +26,13 @@ async def join_cmd(client, message: Message):
         
     try:
         chat_id = int(message.command[1])
-    except:
-        return await message.reply_text("Usage: `/join <chat_id>`")
+    except (IndexError, ValueError):
+        # FIX: Using HTML <code> tags instead of markdown backticks to prevent EntityBoundsInvalid
+        return await message.reply_text("Usage: <code>/join &lt;chat_id&gt;</code>")
         
     msg = await message.reply_text("Initializing...")
-    
-    for i in range(1, 11):
-        await asyncio.sleep(0.2)
-        await progress_bar(msg, i, 10, "Connecting Audio Stream")
+    await show_progress_bar(msg, "Connecting Audio Stream", 5)
         
-    # NOTE: To actually join a voice chat, you must pass a Userbot Client instance 
-    # (a STRING_SESSION from your database), not the Bot client. 
-    # The code below is a placeholder until account management is built.
     await msg.edit_text(
         f"✅ <b>Command received!</b>\n"
         f"🎵 Target Chat ID: <code>{chat_id}</code>\n\n"
@@ -50,11 +41,6 @@ async def join_cmd(client, message: Message):
 
 @Client.on_message(filters.command("leaveall") & filters.private)
 async def leave_all(client, message: Message):
-    user_id = message.from_user.id
     msg = await message.reply_text("Disconnecting...")
-    
-    for i in range(1, 6):
-        await asyncio.sleep(0.2)
-        await progress_bar(msg, i, 5, "Disconnecting")
-        
+    await show_progress_bar(msg, "Disconnecting", 5)
     await msg.edit_text("✅ <b>All chats disconnected successfully!</b>")
