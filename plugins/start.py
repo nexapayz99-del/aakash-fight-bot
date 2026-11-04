@@ -106,8 +106,20 @@ async def start_cmd(client, message):
         reply_markup=main_menu(is_owner)
     )
 
-# ROUTER - Only matches menu_* and feature_* to avoid conflicting with owner.py
-@Client.on_callback_query(filters.regex(r"^(menu_|audio_|fx_|acc_|util_|own_|noop)"))
+# ============================================================
+# FIXED ROUTER - Use simple `filters.create` instead of regex
+# to guarantee it catches ONLY our menu buttons.
+# ============================================================
+PREFIXES = ("menu_", "audio_", "fx_", "acc_", "util_", "own_", "noop")
+
+async def _is_menu_button(_, __, query: CallbackQuery):
+    if not query.data:
+        return False
+    return query.data.startswith(PREFIXES)
+
+menu_filter = filters.create(_is_menu_button)
+
+@Client.on_callback_query(menu_filter)
 async def menu_router(client, query: CallbackQuery):
     await query.answer()
     data = query.data
@@ -136,7 +148,6 @@ async def menu_router(client, query: CallbackQuery):
         elif data == "noop":
             await query.answer("Waiting for admin approval...", show_alert=True)
         else:
-            # Sub-action placeholders (coming in next update)
             await query.answer("This feature is coming soon!", show_alert=True)
             
     except MessageNotModified:
