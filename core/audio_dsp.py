@@ -14,12 +14,13 @@ class AudioDSP:
         self.ffmpeg_process = None
 
     async def setup_sink(self):
-        logger.info(f"[DSP] Setting up sink for {self.user_id}")
-        # Load pulseaudio null sink
-        await asyncio.create_subprocess_shell(
-            f"pactl load-module module-null-sink sink_name={self.sink_name} sink_properties=device.description={self.sink_name}",
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
+        try:
+            await asyncio.create_subprocess_shell(
+                f"pactl load-module module-null-sink sink_name={self.sink_name} sink_properties=device.description={self.sink_name}",
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+        except Exception as e:
+            logger.error(f"[DSP] PulseAudio error: {e}")
         if not os.path.exists(self.fifo_path):
             os.mkfifo(self.fifo_path)
 
@@ -31,17 +32,19 @@ class AudioDSP:
         if effects.get("overdrive"): filter_chain.append(f"overdrive={effects['overdrive']}")
         
         af_string = ",".join(filter_chain) if filter_chain else "anull"
-        
         cmd = f"ffmpeg -y -f s16le -ac 2 -ar 48000 -i {self.fifo_path} -af '{af_string}' -f pulse {self.sink_name}"
         
-        self.ffmpeg_process = await asyncio.create_subprocess_shell(
-            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
-        logger.info(f"[DSP] FFmpeg started for {self.user_id}")
+        try:
+            self.ffmpeg_process = await asyncio.create_subprocess_shell(
+                cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            logger.info(f"[DSP] FFmpeg started for {self.user_id}")
+        except Exception as e:
+            logger.error(f"[DSP] FFmpeg failed: {e}")
 
     async def stop(self):
-        if self.ffmpeg_process:
-            self.ffmpeg_process.terminate()
-        await asyncio.create_subprocess_shell(f"pactl unload-module {self.sink_name}", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if os.path.exists(self.fifo_path):
-            os.remove(self.fifo_path)
+        if self.ffmpeg_process: self.ffmpeg_process.terminate()
+        try:
+            await asyncio.create_subprocess_shell(f"pactl unload-module {self.sink_name}", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except: pass
+        if os.path.exists(self.fifo_path): os.remove(self.fifo_path)
