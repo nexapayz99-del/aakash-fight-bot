@@ -1,9 +1,17 @@
 # plugins/effects.py
+import asyncio
 from pyrogram import Client, filters
 from pyrogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from database.mongo import db
 from config import Config
-from core.audio_dsp import AudioDSP # We will use this to reload FFmpeg
+
+EFFECT_NAMES = {
+    "level": "Level",
+    "bass": "Bass",
+    "treble": "Treble",
+    "gain": "Gain",
+    "overdrive": "Overdrive"
+}
 
 @Client.on_message(filters.command("bass") & filters.private)
 async def bass_cmd(client, message: Message):
@@ -14,50 +22,59 @@ async def bass_cmd(client, message: Message):
     try:
         value = int(message.command[1])
         await db.update_effect(user_id, "bass", value)
-        await message.reply_text(f"🎛️ Bass set to **{value}**\nReloading audio stream...")
-        # In a real implementation, you would call AudioDSP(user_id).reload_filters(user)
-    except:
-        await message.reply_text("Usage: `/bass <0-100>`")
+        await message.reply_text(f"🎛️ Bass set to **{value}**")
+    except (IndexError, ValueError):
+        await message.reply_text("Usage: <code>/bass &lt;0-100&gt;</code>")
 
-# Callback for the Effects Menu buttons
 @Client.on_callback_query(filters.regex(r"^fx_"))
 async def fx_callback(client, query: CallbackQuery):
     await query.answer()
     user_id = query.from_user.id
-    user = await db.get_user(user_id)
-    action = query.data.split("_")[1]
+    action = query.data.split("_", 1)[1]
 
+    # Static actions
     if action == "reset":
         await db.reset_effects(user_id)
-        user = await db.get_user(user_id) # Refresh data
-        await query.message.edit_text("🔄 **All effects reset to default!**")
-        # Reload AudioDSP here
-        return
-
-    if action == "show":
+        return await query.message.edit_text(
+            "🔄 <b>All effects reset to default!</b>",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Back", callback_data="menu_fx")]])
+        )
+    elif action == "show":
+        user = await db.get_user(user_id)
         fx = user.get("effects", {})
         text = (
-            "📋 **Active Effects**\n\n"
-            f"🔊 Level: {fx.get('level')}%\n"
-            f"🎸 Bass: {fx.get('bass')}%\n"
-            f"🎻 Treble: {fx.get('treble')}%\n"
-            f"⚡ Gain: {fx.get('gain')}%\n"
-            f"🔥 Overdrive: {fx.get('overdrive')}%\n"
-            f"🗣️ Echo: {fx.get('echo')}"
+            "📋 <b>Active Effects</b>\n\n"
+            f"🔊 Level: {fx.get('level', 100)}%\n"
+            f"🎸 Bass: {fx.get('bass', 0)}%\n"
+            f"🎻 Treble: {fx.get('treble', 0)}%\n"
+            f"⚡ Gain: {fx.get('gain', 0)}%\n"
+            f"🔥 Overdrive: {fx.get('overdrive', 0)}%\n"
+            f"🗣️ Echo: {fx.get('echo', 'off')}"
         )
         return await query.message.edit_text(text)
 
-    # For prompts like Level, Bass, Treble, etc.
-    prompt_text = f"🎛️ **Enter a value (0-100) for {action.capitalize()}:**\n\n*(Send as a reply to this message)*"
-    
-    # Use pyromod to ask for input
-    try:
-        answer = await client.ask(query.message.chat.id, prompt_text, timeout=60)
-        value = int(answer.text)
-        if not 0 <= value <= 100:
-            raise ValueError
-        await db.update_effect(user_id, action, value)
-        await answer.reply_text(f"✅ {action.capitalize()} set to **{value}%**!")
-        # Reload AudioDSP here
-    except (ValueError, TimeoutError):
-        await query.message.reply_text("❌ Invalid input or timeout. Please try again from the menu.")
+    # Prompt-based actions
+    if action in EFFECT_NAMES:
+        name = EFFECT_NAMES[action]
+        prompt = await client.send_message(
+            chat_id=query.message.chat.id,
+            text=f"🎛️ <b>Send a number (0-100) for {name}:</b>\n\nType /cancel to abort."
+        )
+        try:
+            response = await client.listen(
+                chat_id=query.message.chat.id,
+                timeout=60,
+                filters=filters.text
+            )
+            if response.text.strip().lower() == "/cancel":
+                return await response.reply_text("❌ Cancelled.")
+            value = int(response.text.strip())
+            if not 0 <= value <= 100:
+                raise ValueError
+            await db.update_effect(user_id, action, value)
+            await response.reply_text(f"✅ <b>{name} set to {value}%!</b>")
+        except (asyncio.TimeoutError, ValueError):
+            await prompt.edit_text("❌ Invalid input or timeout.")
+        return
+
+    await query.answer("Unknown effect.", show_alert=True)
