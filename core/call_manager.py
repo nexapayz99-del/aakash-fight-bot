@@ -1,13 +1,13 @@
 # core/call_manager.py
-from py_tgcalls import PyTgCalls
-from py_tgcalls.types import MediaStream
+from pytgcalls import PyTgCalls
+from pytgcalls.types import MediaStream, Update
 import logging
 
 logger = logging.getLogger(__name__)
 
 class CallManager:
     def __init__(self):
-        self.calls = {} # {user_id: PyTgCalls}
+        self.calls = {}
 
     async def start_call(self, user_id, client, chat_id, fifo_path):
         try:
@@ -15,10 +15,9 @@ class CallManager:
                 self.calls[user_id] = PyTgCalls(client)
                 await self.calls[user_id].start()
 
-            # Join group call and stream from the isolated FIFO pipe
             await self.calls[user_id].play(
                 chat_id,
-                MediaStream(fifo_path)
+                MediaStream(fifo_path, audio_parameters=(48000, 2))
             )
             logger.info(f"[Call] User {user_id} joined {chat_id}")
             return True
