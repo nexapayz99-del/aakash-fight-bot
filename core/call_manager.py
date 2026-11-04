@@ -1,13 +1,13 @@
 # core/call_manager.py
 from pytgcalls import PyTgCalls
-from pytgcalls.types import MediaStream, Update
+from pytgcalls.types import MediaStream
 import logging
 
 logger = logging.getLogger(__name__)
 
 class CallManager:
     def __init__(self):
-        self.calls = {}
+        self.calls = {}  # {user_id: PyTgCalls}
 
     async def start_call(self, user_id, client, chat_id, fifo_path):
         try:
@@ -15,9 +15,10 @@ class CallManager:
                 self.calls[user_id] = PyTgCalls(client)
                 await self.calls[user_id].start()
 
+            # v2+ uses play() with MediaStream
             await self.calls[user_id].play(
                 chat_id,
-                MediaStream(fifo_path, audio_parameters=(48000, 2))
+                MediaStream(fifo_path)
             )
             logger.info(f"[Call] User {user_id} joined {chat_id}")
             return True
