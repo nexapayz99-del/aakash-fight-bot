@@ -1,6 +1,5 @@
 pyrofork
-py-tgcalls==2.1.0
-ntgcalls==2.1.0
+py-tgcalls==2.2.2
 motor
 python-dotenv
 pyromod
