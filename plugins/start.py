@@ -102,20 +102,23 @@ async def account_actions(client, query: CallbackQuery):
     
     if action == "login":
         try:
-            await client.send_message(query.message.chat.id, "📱 <b>Enter phone number:</b>\n<i>Format: +1234567890</i>\n\nType /cancel to abort.")
-            
-            # FIXED: Positional arguments
-            phone_msg = await client.listen(query.message.chat.id, filters.text, 60)
-            
-            if phone_msg.text.lower() == "/cancel": return await phone_msg.reply_text("❌ Cancelled.")
+            # FIXED: use client.ask()
+            phone_msg = await client.ask(
+                query.message.chat.id,
+                "📱 <b>Enter phone number:</b>\n<i>Format: +1234567890</i>\n\nType /cancel to abort.",
+                timeout=60
+            )
+            if phone_msg.text.strip().lower() == "/cancel":
+                return await phone_msg.reply_text("❌ Cancelled.")
             phone = phone_msg.text.strip()
 
-            await client.send_message(query.message.chat.id, "🔑 <b>Enter OTP code:</b>\n<i>Format: 1 2 3 4 5</i>\n\nType /cancel to abort.")
-            
-            # FIXED: Positional arguments
-            otp_msg = await client.listen(query.message.chat.id, filters.text, 120)
-            
-            if otp_msg.text.lower() == "/cancel": return await otp_msg.reply_text("❌ Cancelled.")
+            otp_msg = await client.ask(
+                query.message.chat.id,
+                "🔑 <b>Enter OTP code:</b>\n<i>Format: 1 2 3 4 5</i>\n\nType /cancel to abort.",
+                timeout=120
+            )
+            if otp_msg.text.strip().lower() == "/cancel":
+                return await otp_msg.reply_text("❌ Cancelled.")
             
             await db.save_account(user_id, phone, "SIMULATED_SESSION")
             await otp_msg.reply_text("✅ <b>Account Logged In & Saved!</b>")
