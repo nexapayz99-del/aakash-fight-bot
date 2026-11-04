@@ -1,10 +1,10 @@
 # plugins/start.py
+import asyncio
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from pyrogram.errors import MessageNotModified
 from database.mongo import db
 from config import Config
-from pyrogram import Client as UserClient
 
 RESTRICTED_TEXT = """
 ⛔ <b>ACCESS RESTRICTED</b>
@@ -18,12 +18,9 @@ You will be notified once approved.
 
 def main_menu(is_owner=False):
     buttons = [
-        [InlineKeyboardButton("🎵 Audio Controls", callback_data="menu_audio"),
-         InlineKeyboardButton("🎛️ Audio Effects", callback_data="menu_fx")],
-        [InlineKeyboardButton("📱 My Accounts", callback_data="menu_acc"),
-         InlineKeyboardButton("📊 Utility & Status", callback_data="menu_util")],
-        [InlineKeyboardButton("👤 Owner", url="https://t.me/"),
-         InlineKeyboardButton("📖 Help Guide", callback_data="menu_help")]
+        [InlineKeyboardButton("🎵 Audio Controls", callback_data="menu_audio"), InlineKeyboardButton("🎛️ Audio Effects", callback_data="menu_fx")],
+        [InlineKeyboardButton("📱 My Accounts", callback_data="menu_acc"), InlineKeyboardButton("📊 Utility & Status", callback_data="menu_util")],
+        [InlineKeyboardButton("👤 Owner", url="https://t.me/"), InlineKeyboardButton("📖 Help Guide", callback_data="menu_help")]
     ]
     if is_owner:
         buttons.append([InlineKeyboardButton("👑 Owner Panel", callback_data="menu_owner")])
@@ -50,24 +47,14 @@ def effects_menu(user):
 
 def accounts_menu():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📱 Login via Phone (OTP)", callback_data="acc_login"), InlineKeyboardButton("🎙️ Set Recorder (String)", callback_data="acc_rec")],
-        [InlineKeyboardButton("➕ Add Broadcaster", callback_data="acc_add"), InlineKeyboardButton("📋 View Saved Accounts", callback_data="acc_view")],
+        [InlineKeyboardButton("📱 Login via Phone (OTP)", callback_data="acc_login"), InlineKeyboardButton("📋 View Saved Accounts", callback_data="acc_view")],
         [InlineKeyboardButton("🗑️ Delete Account", callback_data="acc_del"), InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
     ])
 
 def utility_menu():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🏓 Ping Latency", callback_data="util_ping"), InlineKeyboardButton("📊 System Stats", callback_data="util_stats")],
-        [InlineKeyboardButton("🔗 Active Forward List", callback_data="util_list"), InlineKeyboardButton("🆔 My ID & Info", callback_data="util_id")],
-        [InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
-    ])
-
-def owner_menu():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("✅ Approve User", callback_data="own_approve"), InlineKeyboardButton("❌ Remove Access", callback_data="own_remove")],
-        [InlineKeyboardButton("🚫 Ban User", callback_data="own_ban"), InlineKeyboardButton("🟢 Unban User", callback_data="own_unban")],
-        [InlineKeyboardButton("📋 View All DB Users", callback_data="own_users"), InlineKeyboardButton("🔄 Restart Bot", callback_data="own_restart")],
-        [InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
+        [InlineKeyboardButton("🆔 My ID & Info", callback_data="util_id"), InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
     ])
 
 @Client.on_message(filters.command("start") & filters.private)
@@ -102,82 +89,49 @@ async def menu_nav(client, query: CallbackQuery):
         elif data == "menu_fx": await query.message.edit_text("🎛️ <b>Audio Effects</b>", reply_markup=effects_menu(user))
         elif data == "menu_acc": await query.message.edit_text("📱 <b>My Accounts</b>", reply_markup=accounts_menu())
         elif data == "menu_util": await query.message.edit_text("📊 <b>Utility</b>", reply_markup=utility_menu())
-        elif data == "menu_owner" and is_owner: await query.message.edit_text("👑 <b>Owner Panel</b>", reply_markup=owner_menu())
+        elif data == "menu_owner" and is_owner:
+            from plugins.owner import owner_menu
+            await query.message.edit_text("👑 <b>Owner Panel</b>", reply_markup=owner_menu())
         elif data == "menu_help": await query.message.edit_text("📖 <b>Help Guide</b>\nUse the buttons to navigate.")
     except MessageNotModified: pass
-
-# In plugins/start.py — replace account_actions with this:
-import asyncio
 
 @Client.on_callback_query(filters.regex(r"^acc_"))
 async def account_actions(client, query: CallbackQuery):
     await query.answer()
     action = query.data.split("_", 1)[1]
     user_id = query.from_user.id
-
+    
     if action == "login":
         try:
-            phone_prompt = await client.send_message(
-                query.message.chat.id,
-                "📱 <b>Enter your phone number:</b>\n<i>Format: +1234567890</i>\n\nType /cancel to abort."
-            )
+            await client.send_message(query.message.chat.id, "📱 <b>Enter phone number:</b>\n<i>Format: +1234567890</i>\n\nType /cancel to abort.")
             phone_msg = await client.listen(query.message.chat.id, timeout=60, filters=filters.text)
+            if phone_msg.text.lower() == "/cancel": return await phone_msg.reply_text("❌ Cancelled.")
             phone = phone_msg.text.strip()
-            if phone.lower() == "/cancel":
-                return await phone_msg.reply_text("❌ Cancelled.")
 
-            otp_prompt = await client.send_message(
-                query.message.chat.id,
-                "🔑 <b>Enter the OTP code:</b>\n<i>Format: 1 2 3 4 5</i>\n\nType /cancel to abort."
-            )
+            await client.send_message(query.message.chat.id, "🔑 <b>Enter OTP code:</b>\n<i>Format: 1 2 3 4 5</i>\n\nType /cancel to abort.")
             otp_msg = await client.listen(query.message.chat.id, timeout=120, filters=filters.text)
-            otp = otp_msg.text.strip().replace(" ", "")
-            if otp.lower() == "/cancel":
-                return await otp_msg.reply_text("❌ Cancelled.")
-
-            # Real Pyrogram login would go here. For now simulate:
-            await db.save_account(user_id, phone, f"SIMULATED_{phone}_{otp}")
+            if otp_msg.text.lower() == "/cancel": return await otp_msg.reply_text("❌ Cancelled.")
+            
+            # Real Pyrogram OTP flow goes here later. Saving simulated session for now.
+            await db.save_account(user_id, phone, "SIMULATED_SESSION")
             await otp_msg.reply_text("✅ <b>Account Logged In & Saved!</b>")
-        except (asyncio.TimeoutError, ValueError) as e:
-            await query.message.reply_text(f"❌ Login failed: {e}")
-        return
-
-    if action == "view":
-        accounts = await db.get_accounts(user_id)
-        if not accounts:
-            return await query.message.reply_text("📭 No accounts saved.")
-        text = "📱 <b>Your Accounts:</b>\n\n"
-        for a in accounts:
-            text += f"📞 <code>{a['phone']}</code>\n"
-        await query.message.reply_text(text)
-        return
-
-    if action == "del":
-        await query.message.reply_text("🗑️ Delete logic coming soon.")
-            
-            # Here you would use Pyrogram to actually log in:
-            # user_app = UserClient(":memory:", api_id=..., api_hash=...)
-            # sent_code = await user_app.send_code(phone)
-            # await user_app.sign_in(phone, sent_code.phone_code_hash, otp)
-            # session_string = await user_app.export_session_string()
-            
-            # Simulating saving for now
-            await db.save_account(user_id, phone, "SIMULATED_STRING_SESSION")
-            await otp_msg.reply_text("✅ **Account Logged In & Saved!**")
-        except Exception as e:
-            await query.message.reply_text(f"❌ Login failed or timeout: {e}")
+        except asyncio.TimeoutError:
+            await query.message.reply_text("❌ Login timeout.")
             
     elif action == "view":
         accounts = await db.get_accounts(user_id)
         if not accounts: return await query.message.reply_text("📭 No accounts saved.")
-        text = "📱 **Your Accounts:**\n\n"
-        for a in accounts: text += f"📞 `{a['phone']}`\n"
+        text = "📱 <b>Your Accounts:</b>\n\n"
+        for a in accounts: text += f"📞 <code>{a['phone']}</code>\n"
         await query.message.reply_text(text)
+
+    elif action == "del":
+        await query.message.reply_text("🗑️ Delete feature coming soon.")
 
 @Client.on_callback_query(filters.regex(r"^util_"))
 async def util_actions(client, query: CallbackQuery):
     await query.answer()
-    action = query.data.split("_")[1]
+    action = query.data.split("_", 1)[1]
     if action == "ping":
         await query.message.edit_text(f"🏓 **Pong!**\nLatency: `{int(asyncio.get_event_loop().time() * 1000) % 500}ms`")
     elif action == "id":
