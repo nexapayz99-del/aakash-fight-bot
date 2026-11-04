@@ -1,4 +1,5 @@
 # main.py
+import pyromod.listen  # MUST be first — activates client.ask() / client.listen()
 import logging
 from pyrogram import Client
 from config import Config
