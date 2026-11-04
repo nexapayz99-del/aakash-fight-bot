@@ -15,7 +15,7 @@ class CallManager:
                 self.calls[user_id] = PyTgCalls(client)
                 await self.calls[user_id].start()
 
-            # v2+ uses play() with MediaStream
+            # Join group call and stream from the isolated FIFO pipe
             await self.calls[user_id].play(
                 chat_id,
                 MediaStream(fifo_path)
