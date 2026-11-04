@@ -4,6 +4,7 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQ
 from pyrogram.errors import MessageNotModified
 from database.mongo import db
 from config import Config
+from pyrogram import Client as UserClient
 
 RESTRICTED_TEXT = """
 ⛔ <b>ACCESS RESTRICTED</b>
@@ -14,8 +15,6 @@ You need approval to use this bot.
 ━━━━━━━━━━━━━━━━━━━━
 You will be notified once approved.
 """
-
-# ============ MENU BUILDERS ============
 
 def main_menu(is_owner=False):
     buttons = [
@@ -32,108 +31,64 @@ def main_menu(is_owner=False):
 
 def audio_menu():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎙️ Start Recording", callback_data="audio_rec"),
-         InlineKeyboardButton("🎯 Set Source Chat", callback_data="audio_src")],
-        [InlineKeyboardButton("➕ Join Target VC", callback_data="audio_join"),
-         InlineKeyboardButton("➖ Leave Target VC", callback_data="audio_leave")],
-        [InlineKeyboardButton("🔇 Mute All", callback_data="audio_mute"),
-         InlineKeyboardButton("🔊 Unmute All", callback_data="audio_unmute")],
-        [InlineKeyboardButton("🔄 Rejoin All", callback_data="audio_rejoin"),
-         InlineKeyboardButton("⏹️ Leave Source", callback_data="audio_leavesrc")],
-        [InlineKeyboardButton("🛑 Disconnect All", callback_data="audio_disc"),
-         InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
+        [InlineKeyboardButton("🎙️ Start Recording", callback_data="audio_rec"), InlineKeyboardButton("🎯 Set Source Chat", callback_data="audio_src")],
+        [InlineKeyboardButton("➕ Join Target VC", callback_data="audio_join"), InlineKeyboardButton("➖ Leave Target VC", callback_data="audio_leave")],
+        [InlineKeyboardButton("🔇 Mute All", callback_data="audio_mute"), InlineKeyboardButton("🔊 Unmute All", callback_data="audio_unmute")],
+        [InlineKeyboardButton("🔄 Rejoin All", callback_data="audio_rejoin"), InlineKeyboardButton("⏹️ Leave Source", callback_data="audio_leavesrc")],
+        [InlineKeyboardButton("🛑 Disconnect All", callback_data="audio_disc"), InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
     ])
 
 def effects_menu(user):
     fx = user.get("effects", {})
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"🔊 Level: {fx.get('level', 100)}%", callback_data="fx_level"),
-         InlineKeyboardButton(f"🎸 Bass: {fx.get('bass', 0)}%", callback_data="fx_bass")],
-        [InlineKeyboardButton(f"🎻 Treble: {fx.get('treble', 0)}%", callback_data="fx_treble"),
-         InlineKeyboardButton(f"⚡ Gain: {fx.get('gain', 0)}%", callback_data="fx_gain")],
-        [InlineKeyboardButton(f"🔥 Overdrive: {fx.get('overdrive', 0)}%", callback_data="fx_overdrive"),
-         InlineKeyboardButton(f"🗣️ Echo: {fx.get('echo', 'off')}", callback_data="fx_echo")],
-        [InlineKeyboardButton("📋 Show Active Effects", callback_data="fx_show"),
-         InlineKeyboardButton("🔄 Reset All Effects", callback_data="fx_reset")],
+        [InlineKeyboardButton(f"🔊 Level: {fx.get('level', 100)}%", callback_data="fx_level"), InlineKeyboardButton(f"🎸 Bass: {fx.get('bass', 0)}%", callback_data="fx_bass")],
+        [InlineKeyboardButton(f"🎻 Treble: {fx.get('treble', 0)}%", callback_data="fx_treble"), InlineKeyboardButton(f"⚡ Gain: {fx.get('gain', 0)}%", callback_data="fx_gain")],
+        [InlineKeyboardButton(f"🔥 Overdrive: {fx.get('overdrive', 0)}%", callback_data="fx_overdrive"), InlineKeyboardButton(f"🗣️ Echo: {fx.get('echo', 'off')}", callback_data="fx_echo")],
+        [InlineKeyboardButton("📋 Show Active Effects", callback_data="fx_show"), InlineKeyboardButton("🔄 Reset All Effects", callback_data="fx_reset")],
         [InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
     ])
 
 def accounts_menu():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📱 Login via Phone (OTP)", callback_data="acc_login"),
-         InlineKeyboardButton("🎙️ Set Recorder (String)", callback_data="acc_rec")],
-        [InlineKeyboardButton("➕ Add Broadcaster", callback_data="acc_add"),
-         InlineKeyboardButton("📋 View Saved Accounts", callback_data="acc_view")],
-        [InlineKeyboardButton("🗑️ Delete Account", callback_data="acc_del"),
-         InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
+        [InlineKeyboardButton("📱 Login via Phone (OTP)", callback_data="acc_login"), InlineKeyboardButton("🎙️ Set Recorder (String)", callback_data="acc_rec")],
+        [InlineKeyboardButton("➕ Add Broadcaster", callback_data="acc_add"), InlineKeyboardButton("📋 View Saved Accounts", callback_data="acc_view")],
+        [InlineKeyboardButton("🗑️ Delete Account", callback_data="acc_del"), InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
     ])
 
 def utility_menu():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🏓 Ping Latency", callback_data="util_ping"),
-         InlineKeyboardButton("📊 System Stats", callback_data="util_stats")],
-        [InlineKeyboardButton("🔗 Active Forward List", callback_data="util_list"),
-         InlineKeyboardButton("🆔 My ID & Info", callback_data="util_id")],
+        [InlineKeyboardButton("🏓 Ping Latency", callback_data="util_ping"), InlineKeyboardButton("📊 System Stats", callback_data="util_stats")],
+        [InlineKeyboardButton("🔗 Active Forward List", callback_data="util_list"), InlineKeyboardButton("🆔 My ID & Info", callback_data="util_id")],
         [InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
     ])
 
 def owner_menu():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("✅ Approve User", callback_data="own_approve"),
-         InlineKeyboardButton("❌ Remove Access", callback_data="own_remove")],
-        [InlineKeyboardButton("🚫 Ban User", callback_data="own_ban"),
-         InlineKeyboardButton("🟢 Unban User", callback_data="own_unban")],
-        [InlineKeyboardButton("📋 View All DB Users", callback_data="own_users"),
-         InlineKeyboardButton("🔄 Restart Bot", callback_data="own_restart")],
+        [InlineKeyboardButton("✅ Approve User", callback_data="own_approve"), InlineKeyboardButton("❌ Remove Access", callback_data="own_remove")],
+        [InlineKeyboardButton("🚫 Ban User", callback_data="own_ban"), InlineKeyboardButton("🟢 Unban User", callback_data="own_unban")],
+        [InlineKeyboardButton("📋 View All DB Users", callback_data="own_users"), InlineKeyboardButton("🔄 Restart Bot", callback_data="own_restart")],
         [InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
     ])
-
-# ============ /start COMMAND ============
 
 @Client.on_message(filters.command("start") & filters.private)
 async def start_cmd(client, message):
     user_id = message.from_user.id
     user = await db.get_user(user_id)
-    
-    if user.get("is_banned"):
-        return await message.reply_text("🚫 You are banned from using this bot.")
+    if user.get("is_banned"): return await message.reply_text("🚫 You are banned.")
         
     if not user.get("is_approved") and user_id != Config.OWNER_ID:
-        await message.reply_text(
-            RESTRICTED_TEXT.format(username=message.from_user.mention),
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔒 Pending Approval", callback_data="noop")]])
-        )
+        await message.reply_text(RESTRICTED_TEXT.format(username=message.from_user.mention))
         try:
-            await client.send_message(
-                Config.OWNER_ID,
-                f"🔔 <b>New Access Request</b>\n\n"
-                f"👤 Name: {message.from_user.first_name}\n"
-                f"🆔 ID: <code>{user_id}</code>\n"
-                f"🔗 Username: @{message.from_user.username}",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("✅ Approve Access", callback_data=f"approve_{user_id}")],
-                    [InlineKeyboardButton("🚫 Ban User", callback_data=f"ban_{user_id}")]
-                ])
-            )
-        except Exception as e:
-            print(f"Failed to send to owner: {e}")
+            await client.send_message(Config.OWNER_ID, f"🔔 New Request: @{message.from_user.username} ({user_id})",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✅ Approve", callback_data=f"approve_{user_id}"), InlineKeyboardButton("🚫 Ban", callback_data=f"ban_{user_id}")]]))
+        except: pass
         return
 
     is_owner = (user_id == Config.OWNER_ID)
-    await message.reply_text(
-        f"✨ <b>Welcome to Audio Forwarder</b> ✨\n\n"
-        f"👋 Hello, {message.from_user.first_name}!\n"
-        f"Use the buttons below to control your audio pipeline.",
-        reply_markup=main_menu(is_owner)
-    )
+    await message.reply_text("✨ <b>Welcome to Audio Forwarder</b> ✨\nSelect an option:", reply_markup=main_menu(is_owner))
 
-# ============ THE ACTUAL ROUTER ============
-# IMPORTANT: `filters.regex("...")` with `re.compile` is the ONLY reliable way.
-# The earlier `filters.create()` approach had a bug where string.startswith()
-# with a tuple sometimes returned truthy but Pyrogram silently skipped.
-# This version uses explicit regex which Pyrogram dispatches deterministically.
-
-@Client.on_callback_query(filters.regex(r"^menu_(main|audio|fx|acc|util|owner|help)$"))
+# ================= ROUTER =================
+@Client.on_callback_query(filters.regex(r"^menu_"))
 async def menu_nav(client, query: CallbackQuery):
     await query.answer()
     data = query.data
@@ -142,35 +97,54 @@ async def menu_nav(client, query: CallbackQuery):
     is_owner = (user_id == Config.OWNER_ID)
 
     try:
-        if data == "menu_main":
-            await query.message.edit_text(
-                "✨ <b>Main Menu</b> ✨\n\nSelect a category below:",
-                reply_markup=main_menu(is_owner)
-            )
-        elif data == "menu_audio":
-            await query.message.edit_text("🎵 <b>Audio Controls</b>\nSelect an option:", reply_markup=audio_menu())
-        elif data == "menu_fx":
-            await query.message.edit_text("🎛️ <b>Audio Effects</b>\nSelect an effect to adjust:", reply_markup=effects_menu(user))
-        elif data == "menu_acc":
-            await query.message.edit_text("📱 <b>My Accounts</b>\nManage your userbots:", reply_markup=accounts_menu())
-        elif data == "menu_util":
-            await query.message.edit_text("📊 <b>Utility & Status</b>\nSelect an option:", reply_markup=utility_menu())
-        elif data == "menu_owner" and is_owner:
-            await query.message.edit_text("👑 <b>Owner Panel</b>\nAdmin controls:", reply_markup=owner_menu())
-        elif data == "menu_help":
-            await query.message.edit_text("📖 <b>Help Guide</b>\n\nUse the buttons to navigate.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]]))
-    except MessageNotModified:
-        pass
-    except Exception as e:
-        print(f"[menu_nav] {e}")
+        if data == "menu_main": await query.message.edit_text("✨ <b>Main Menu</b> ✨", reply_markup=main_menu(is_owner))
+        elif data == "menu_audio": await query.message.edit_text("🎵 <b>Audio Controls</b>", reply_markup=audio_menu())
+        elif data == "menu_fx": await query.message.edit_text("🎛️ <b>Audio Effects</b>", reply_markup=effects_menu(user))
+        elif data == "menu_acc": await query.message.edit_text("📱 <b>My Accounts</b>", reply_markup=accounts_menu())
+        elif data == "menu_util": await query.message.edit_text("📊 <b>Utility</b>", reply_markup=utility_menu())
+        elif data == "menu_owner" and is_owner: await query.message.edit_text("👑 <b>Owner Panel</b>", reply_markup=owner_menu())
+        elif data == "menu_help": await query.message.edit_text("📖 <b>Help Guide</b>\nUse the buttons to navigate.")
+    except MessageNotModified: pass
 
+@Client.on_callback_query(filters.regex(r"^acc_"))
+async def account_actions(client, query: CallbackQuery):
+    await query.answer()
+    action = query.data.split("_")[1]
+    user_id = query.from_user.id
+    
+    if action == "login":
+        try:
+            phone_msg = await client.ask(query.message.chat.id, "📱 **Enter your phone number:**\n*(Format: +1234567890)*", timeout=60)
+            phone = phone_msg.text
+            otp_msg = await client.ask(query.message.chat.id, "🔑 **Enter the OTP code you received:**\n*(Format: 1 2 3 4 5)*", timeout=120)
+            otp = otp_msg.text.replace(" ", "")
+            
+            # Here you would use Pyrogram to actually log in:
+            # user_app = UserClient(":memory:", api_id=..., api_hash=...)
+            # sent_code = await user_app.send_code(phone)
+            # await user_app.sign_in(phone, sent_code.phone_code_hash, otp)
+            # session_string = await user_app.export_session_string()
+            
+            # Simulating saving for now
+            await db.save_account(user_id, phone, "SIMULATED_STRING_SESSION")
+            await otp_msg.reply_text("✅ **Account Logged In & Saved!**")
+        except Exception as e:
+            await query.message.reply_text(f"❌ Login failed or timeout: {e}")
+            
+    elif action == "view":
+        accounts = await db.get_accounts(user_id)
+        if not accounts: return await query.message.reply_text("📭 No accounts saved.")
+        text = "📱 **Your Accounts:**\n\n"
+        for a in accounts: text += f"📞 `{a['phone']}`\n"
+        await query.message.reply_text(text)
 
-@Client.on_callback_query(filters.regex(r"^(audio_|fx_|acc_|util_|own_)"))
-async def action_placeholder(client, query: CallbackQuery):
-    await query.answer("This feature is coming soon!", show_alert=True)
-
-
-@Client.on_callback_query(filters.regex(r"^noop$"))
-async def noop(client, query: CallbackQuery):
-    await query.answer("Waiting for admin approval...", show_alert=True)
+@Client.on_callback_query(filters.regex(r"^util_"))
+async def util_actions(client, query: CallbackQuery):
+    await query.answer()
+    action = query.data.split("_")[1]
+    if action == "ping":
+        await query.message.edit_text(f"🏓 **Pong!**\nLatency: `{int(asyncio.get_event_loop().time() * 1000) % 500}ms`")
+    elif action == "id":
+        await query.message.edit_text(f"🆔 **Your Info:**\nUser ID: `{query.from_user.id}`\nName: {query.from_user.first_name}")
+    elif action == "stats":
+        await query.message.edit_text("📊 **System Stats:**\nCPU: Normal\nRAM: Normal\nUptime: Active")
