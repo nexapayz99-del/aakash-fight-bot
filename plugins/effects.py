@@ -5,13 +5,7 @@ from pyrogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineK
 from database.mongo import db
 from config import Config
 
-EFFECT_NAMES = {
-    "level": "Level",
-    "bass": "Bass",
-    "treble": "Treble",
-    "gain": "Gain",
-    "overdrive": "Overdrive"
-}
+EFFECT_NAMES = {"level": "Level", "bass": "Bass", "treble": "Treble", "gain": "Gain", "overdrive": "Overdrive"}
 
 @Client.on_message(filters.command("bass") & filters.private)
 async def bass_cmd(client, message: Message):
@@ -32,14 +26,11 @@ async def fx_callback(client, query: CallbackQuery):
     user_id = query.from_user.id
     action = query.data.split("_", 1)[1]
 
-    # Static actions
     if action == "reset":
         await db.reset_effects(user_id)
-        return await query.message.edit_text(
-            "🔄 <b>All effects reset to default!</b>",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Back", callback_data="menu_fx")]])
-        )
-    elif action == "show":
+        return await query.message.edit_text("🔄 <b>All effects reset to default!</b>", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Back", callback_data="menu_fx")]]))
+    
+    if action == "show":
         user = await db.get_user(user_id)
         fx = user.get("effects", {})
         text = (
@@ -53,28 +44,18 @@ async def fx_callback(client, query: CallbackQuery):
         )
         return await query.message.edit_text(text)
 
-    # Prompt-based actions
     if action in EFFECT_NAMES:
         name = EFFECT_NAMES[action]
-        prompt = await client.send_message(
-            chat_id=query.message.chat.id,
-            text=f"🎛️ <b>Send a number (0-100) for {name}:</b>\n\nType /cancel to abort."
-        )
         try:
-            response = await client.listen(
-                chat_id=query.message.chat.id,
-                timeout=60,
-                filters=filters.text
-            )
-            if response.text.strip().lower() == "/cancel":
-                return await response.reply_text("❌ Cancelled.")
+            prompt = await client.send_message(query.message.chat.id, f"🎛️ <b>Send a number (0-100) for {name}:</b>\n\nType /cancel to abort.")
+            response = await client.listen(query.message.chat.id, timeout=60, filters=filters.text)
+            if response.text.strip().lower() == "/cancel": return await response.reply_text("❌ Cancelled.")
             value = int(response.text.strip())
-            if not 0 <= value <= 100:
-                raise ValueError
+            if not 0 <= value <= 100: raise ValueError
             await db.update_effect(user_id, action, value)
             await response.reply_text(f"✅ <b>{name} set to {value}%!</b>")
-        except (asyncio.TimeoutError, ValueError):
-            await prompt.edit_text("❌ Invalid input or timeout.")
+        except asyncio.TimeoutError:
+            await prompt.edit_text("❌ Timeout.")
+        except ValueError:
+            await prompt.edit_text("❌ Invalid input.")
         return
-
-    await query.answer("Unknown effect.", show_alert=True)
