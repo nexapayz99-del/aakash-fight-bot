@@ -106,18 +106,54 @@ async def menu_nav(client, query: CallbackQuery):
         elif data == "menu_help": await query.message.edit_text("📖 <b>Help Guide</b>\nUse the buttons to navigate.")
     except MessageNotModified: pass
 
+# In plugins/start.py — replace account_actions with this:
+import asyncio
+
 @Client.on_callback_query(filters.regex(r"^acc_"))
 async def account_actions(client, query: CallbackQuery):
     await query.answer()
-    action = query.data.split("_")[1]
+    action = query.data.split("_", 1)[1]
     user_id = query.from_user.id
-    
+
     if action == "login":
         try:
-            phone_msg = await client.ask(query.message.chat.id, "📱 **Enter your phone number:**\n*(Format: +1234567890)*", timeout=60)
-            phone = phone_msg.text
-            otp_msg = await client.ask(query.message.chat.id, "🔑 **Enter the OTP code you received:**\n*(Format: 1 2 3 4 5)*", timeout=120)
-            otp = otp_msg.text.replace(" ", "")
+            phone_prompt = await client.send_message(
+                query.message.chat.id,
+                "📱 <b>Enter your phone number:</b>\n<i>Format: +1234567890</i>\n\nType /cancel to abort."
+            )
+            phone_msg = await client.listen(query.message.chat.id, timeout=60, filters=filters.text)
+            phone = phone_msg.text.strip()
+            if phone.lower() == "/cancel":
+                return await phone_msg.reply_text("❌ Cancelled.")
+
+            otp_prompt = await client.send_message(
+                query.message.chat.id,
+                "🔑 <b>Enter the OTP code:</b>\n<i>Format: 1 2 3 4 5</i>\n\nType /cancel to abort."
+            )
+            otp_msg = await client.listen(query.message.chat.id, timeout=120, filters=filters.text)
+            otp = otp_msg.text.strip().replace(" ", "")
+            if otp.lower() == "/cancel":
+                return await otp_msg.reply_text("❌ Cancelled.")
+
+            # Real Pyrogram login would go here. For now simulate:
+            await db.save_account(user_id, phone, f"SIMULATED_{phone}_{otp}")
+            await otp_msg.reply_text("✅ <b>Account Logged In & Saved!</b>")
+        except (asyncio.TimeoutError, ValueError) as e:
+            await query.message.reply_text(f"❌ Login failed: {e}")
+        return
+
+    if action == "view":
+        accounts = await db.get_accounts(user_id)
+        if not accounts:
+            return await query.message.reply_text("📭 No accounts saved.")
+        text = "📱 <b>Your Accounts:</b>\n\n"
+        for a in accounts:
+            text += f"📞 <code>{a['phone']}</code>\n"
+        await query.message.reply_text(text)
+        return
+
+    if action == "del":
+        await query.message.reply_text("🗑️ Delete logic coming soon.")
             
             # Here you would use Pyrogram to actually log in:
             # user_app = UserClient(":memory:", api_id=..., api_hash=...)
