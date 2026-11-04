@@ -28,8 +28,8 @@ async def fx_callback(client, query: CallbackQuery):
 
     if action == "reset":
         await db.reset_effects(user_id)
-        return await query.message.edit_text("🔄 <b>All effects reset to default!</b>", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Back", callback_data="menu_fx")]]))
-    
+        return await query.message.edit_text("🔄 <b>All effects reset to default!</b>")
+
     if action == "show":
         user = await db.get_user(user_id)
         fx = user.get("effects", {})
@@ -47,18 +47,19 @@ async def fx_callback(client, query: CallbackQuery):
     if action in EFFECT_NAMES:
         name = EFFECT_NAMES[action]
         try:
-            prompt = await client.send_message(query.message.chat.id, f"🎛️ <b>Send a number (0-100) for {name}:</b>\n\nType /cancel to abort.")
-            
-            # FIXED: Positional arguments instead of keyword arguments
-            response = await client.listen(query.message.chat.id, filters.text, 60)
-            
-            if response.text.strip().lower() == "/cancel": return await response.reply_text("❌ Cancelled.")
+            # FIXED: use client.ask() — pyromod's primary, tested method
+            response = await client.ask(
+                query.message.chat.id,
+                f"🎛️ <b>Send a number (0-100) for {name}:</b>\n\nType /cancel to abort.",
+                timeout=60
+            )
+            if response.text.strip().lower() == "/cancel":
+                return await response.reply_text("❌ Cancelled.")
             value = int(response.text.strip())
-            if not 0 <= value <= 100: raise ValueError
+            if not 0 <= value <= 100:
+                raise ValueError
             await db.update_effect(user_id, action, value)
             await response.reply_text(f"✅ <b>{name} set to {value}%!</b>")
-        except asyncio.TimeoutError:
-            await prompt.edit_text("❌ Timeout.")
-        except ValueError:
-            await prompt.edit_text("❌ Invalid input.")
+        except (asyncio.TimeoutError, ValueError):
+            await query.message.reply_text("❌ Invalid input or timeout.")
         return
