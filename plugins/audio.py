@@ -4,7 +4,6 @@ from pyrogram import Client, filters
 from pyrogram.types import Message
 from database.mongo import db
 from config import Config
-from core.call_manager import call_manager
 
 async def show_progress_bar(msg: Message, action_name: str, total_steps: int = 5):
     for step in range(1, total_steps + 1):
@@ -27,7 +26,6 @@ async def join_cmd(client, message: Message):
     try:
         chat_id = int(message.command[1])
     except (IndexError, ValueError):
-        # FIX: Using HTML <code> tags instead of markdown backticks to prevent EntityBoundsInvalid
         return await message.reply_text("Usage: <code>/join &lt;chat_id&gt;</code>")
         
     msg = await message.reply_text("Initializing...")
