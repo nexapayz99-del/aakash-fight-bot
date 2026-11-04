@@ -48,7 +48,10 @@ async def fx_callback(client, query: CallbackQuery):
         name = EFFECT_NAMES[action]
         try:
             prompt = await client.send_message(query.message.chat.id, f"🎛️ <b>Send a number (0-100) for {name}:</b>\n\nType /cancel to abort.")
-            response = await client.listen(query.message.chat.id, timeout=60, filters=filters.text)
+            
+            # FIXED: Positional arguments instead of keyword arguments
+            response = await client.listen(query.message.chat.id, filters.text, 60)
+            
             if response.text.strip().lower() == "/cancel": return await response.reply_text("❌ Cancelled.")
             value = int(response.text.strip())
             if not 0 <= value <= 100: raise ValueError
