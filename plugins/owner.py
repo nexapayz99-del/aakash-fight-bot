@@ -41,12 +41,14 @@ async def owner_panel_actions(client, query: CallbackQuery):
 
     if action in ("approve", "remove", "ban", "unban"):
         try:
-            prompt = await client.send_message(query.message.chat.id, f"👑 <b>Send the User ID to {action}:</b>\n\nType /cancel to abort.")
-            
-            # FIXED: Positional arguments
-            response = await client.listen(query.message.chat.id, filters.text, 60)
-            
-            if response.text.lower() == "/cancel": return await response.reply_text("❌ Cancelled.")
+            # FIXED: use client.ask()
+            response = await client.ask(
+                query.message.chat.id,
+                f"👑 <b>Send the User ID to {action}:</b>\n\nType /cancel to abort.",
+                timeout=60
+            )
+            if response.text.strip().lower() == "/cancel":
+                return await response.reply_text("❌ Cancelled.")
             target_id = int(response.text.strip())
 
             if action == "approve":
@@ -63,10 +65,8 @@ async def owner_panel_actions(client, query: CallbackQuery):
             elif action == "unban":
                 await db.users.update_one({"_id": target_id}, {"$set": {"is_banned": False}}, upsert=True)
                 await response.reply_text(f"🟢 Unbanned {target_id}")
-        except asyncio.TimeoutError:
-            await prompt.edit_text("❌ Timeout.")
-        except ValueError:
-            await prompt.edit_text("❌ Invalid User ID.")
+        except (asyncio.TimeoutError, ValueError):
+            await query.message.reply_text("❌ Invalid input or timeout.")
         return
 
     if action == "users":
