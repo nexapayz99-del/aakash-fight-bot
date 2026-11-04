@@ -15,6 +15,8 @@ You need approval to use this bot.
 You will be notified once approved.
 """
 
+# ============ MENU BUILDERS ============
+
 def main_menu(is_owner=False):
     buttons = [
         [InlineKeyboardButton("🎵 Audio Controls", callback_data="menu_audio"),
@@ -30,44 +32,63 @@ def main_menu(is_owner=False):
 
 def audio_menu():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎙️ Start Recording", callback_data="audio_rec"), InlineKeyboardButton("🎯 Set Source Chat", callback_data="audio_src")],
-        [InlineKeyboardButton("➕ Join Target VC", callback_data="audio_join"), InlineKeyboardButton("➖ Leave Target VC", callback_data="audio_leave")],
-        [InlineKeyboardButton("🔇 Mute All", callback_data="audio_mute"), InlineKeyboardButton("🔊 Unmute All", callback_data="audio_unmute")],
-        [InlineKeyboardButton("🔄 Rejoin All", callback_data="audio_rejoin"), InlineKeyboardButton("⏹️ Leave Source", callback_data="audio_leavesrc")],
-        [InlineKeyboardButton("🛑 Disconnect All", callback_data="audio_disc"), InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
+        [InlineKeyboardButton("🎙️ Start Recording", callback_data="audio_rec"),
+         InlineKeyboardButton("🎯 Set Source Chat", callback_data="audio_src")],
+        [InlineKeyboardButton("➕ Join Target VC", callback_data="audio_join"),
+         InlineKeyboardButton("➖ Leave Target VC", callback_data="audio_leave")],
+        [InlineKeyboardButton("🔇 Mute All", callback_data="audio_mute"),
+         InlineKeyboardButton("🔊 Unmute All", callback_data="audio_unmute")],
+        [InlineKeyboardButton("🔄 Rejoin All", callback_data="audio_rejoin"),
+         InlineKeyboardButton("⏹️ Leave Source", callback_data="audio_leavesrc")],
+        [InlineKeyboardButton("🛑 Disconnect All", callback_data="audio_disc"),
+         InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
     ])
 
 def effects_menu(user):
     fx = user.get("effects", {})
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"🔊 Level: {fx.get('level', 100)}%", callback_data="fx_level"), InlineKeyboardButton(f"🎸 Bass: {fx.get('bass', 0)}%", callback_data="fx_bass")],
-        [InlineKeyboardButton(f"🎻 Treble: {fx.get('treble', 0)}%", callback_data="fx_treble"), InlineKeyboardButton(f"⚡ Gain: {fx.get('gain', 0)}%", callback_data="fx_gain")],
-        [InlineKeyboardButton(f"🔥 Overdrive: {fx.get('overdrive', 0)}%", callback_data="fx_overdrive"), InlineKeyboardButton(f"🗣️ Echo: {fx.get('echo', 'off')}", callback_data="fx_echo")],
-        [InlineKeyboardButton("📋 Show Active Effects", callback_data="fx_show"), InlineKeyboardButton("🔄 Reset All Effects", callback_data="fx_reset")],
+        [InlineKeyboardButton(f"🔊 Level: {fx.get('level', 100)}%", callback_data="fx_level"),
+         InlineKeyboardButton(f"🎸 Bass: {fx.get('bass', 0)}%", callback_data="fx_bass")],
+        [InlineKeyboardButton(f"🎻 Treble: {fx.get('treble', 0)}%", callback_data="fx_treble"),
+         InlineKeyboardButton(f"⚡ Gain: {fx.get('gain', 0)}%", callback_data="fx_gain")],
+        [InlineKeyboardButton(f"🔥 Overdrive: {fx.get('overdrive', 0)}%", callback_data="fx_overdrive"),
+         InlineKeyboardButton(f"🗣️ Echo: {fx.get('echo', 'off')}", callback_data="fx_echo")],
+        [InlineKeyboardButton("📋 Show Active Effects", callback_data="fx_show"),
+         InlineKeyboardButton("🔄 Reset All Effects", callback_data="fx_reset")],
         [InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
     ])
 
 def accounts_menu():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📱 Login via Phone (OTP)", callback_data="acc_login"), InlineKeyboardButton("🎙️ Set Recorder (String)", callback_data="acc_rec")],
-        [InlineKeyboardButton("➕ Add Broadcaster", callback_data="acc_add"), InlineKeyboardButton("📋 View Saved Accounts", callback_data="acc_view")],
-        [InlineKeyboardButton("🗑️ Delete Account", callback_data="acc_del"), InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
+        [InlineKeyboardButton("📱 Login via Phone (OTP)", callback_data="acc_login"),
+         InlineKeyboardButton("🎙️ Set Recorder (String)", callback_data="acc_rec")],
+        [InlineKeyboardButton("➕ Add Broadcaster", callback_data="acc_add"),
+         InlineKeyboardButton("📋 View Saved Accounts", callback_data="acc_view")],
+        [InlineKeyboardButton("🗑️ Delete Account", callback_data="acc_del"),
+         InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
     ])
 
 def utility_menu():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🏓 Ping Latency", callback_data="util_ping"), InlineKeyboardButton("📊 System Stats", callback_data="util_stats")],
-        [InlineKeyboardButton("🔗 Active Forward List", callback_data="util_list"), InlineKeyboardButton("🆔 My ID & Info", callback_data="util_id")],
+        [InlineKeyboardButton("🏓 Ping Latency", callback_data="util_ping"),
+         InlineKeyboardButton("📊 System Stats", callback_data="util_stats")],
+        [InlineKeyboardButton("🔗 Active Forward List", callback_data="util_list"),
+         InlineKeyboardButton("🆔 My ID & Info", callback_data="util_id")],
         [InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
     ])
 
 def owner_menu():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("✅ Approve User", callback_data="own_approve"), InlineKeyboardButton("❌ Remove Access", callback_data="own_remove")],
-        [InlineKeyboardButton("🚫 Ban User", callback_data="own_ban"), InlineKeyboardButton("🟢 Unban User", callback_data="own_unban")],
-        [InlineKeyboardButton("📋 View All DB Users", callback_data="own_users"), InlineKeyboardButton("🔄 Restart Bot", callback_data="own_restart")],
+        [InlineKeyboardButton("✅ Approve User", callback_data="own_approve"),
+         InlineKeyboardButton("❌ Remove Access", callback_data="own_remove")],
+        [InlineKeyboardButton("🚫 Ban User", callback_data="own_ban"),
+         InlineKeyboardButton("🟢 Unban User", callback_data="own_unban")],
+        [InlineKeyboardButton("📋 View All DB Users", callback_data="own_users"),
+         InlineKeyboardButton("🔄 Restart Bot", callback_data="own_restart")],
         [InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
     ])
+
+# ============ /start COMMAND ============
 
 @Client.on_message(filters.command("start") & filters.private)
 async def start_cmd(client, message):
@@ -106,21 +127,14 @@ async def start_cmd(client, message):
         reply_markup=main_menu(is_owner)
     )
 
-# ============================================================
-# FIXED ROUTER - Use simple `filters.create` instead of regex
-# to guarantee it catches ONLY our menu buttons.
-# ============================================================
-PREFIXES = ("menu_", "audio_", "fx_", "acc_", "util_", "own_", "noop")
+# ============ THE ACTUAL ROUTER ============
+# IMPORTANT: `filters.regex("...")` with `re.compile` is the ONLY reliable way.
+# The earlier `filters.create()` approach had a bug where string.startswith()
+# with a tuple sometimes returned truthy but Pyrogram silently skipped.
+# This version uses explicit regex which Pyrogram dispatches deterministically.
 
-async def _is_menu_button(_, __, query: CallbackQuery):
-    if not query.data:
-        return False
-    return query.data.startswith(PREFIXES)
-
-menu_filter = filters.create(_is_menu_button)
-
-@Client.on_callback_query(menu_filter)
-async def menu_router(client, query: CallbackQuery):
+@Client.on_callback_query(filters.regex(r"^menu_(main|audio|fx|acc|util|owner|help)$"))
+async def menu_nav(client, query: CallbackQuery):
     await query.answer()
     data = query.data
     user_id = query.from_user.id
@@ -144,13 +158,19 @@ async def menu_router(client, query: CallbackQuery):
         elif data == "menu_owner" and is_owner:
             await query.message.edit_text("👑 <b>Owner Panel</b>\nAdmin controls:", reply_markup=owner_menu())
         elif data == "menu_help":
-            await query.message.edit_text("📖 <b>Help Guide</b>\n\nUse the buttons to navigate.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]]))
-        elif data == "noop":
-            await query.answer("Waiting for admin approval...", show_alert=True)
-        else:
-            await query.answer("This feature is coming soon!", show_alert=True)
-            
+            await query.message.edit_text("📖 <b>Help Guide</b>\n\nUse the buttons to navigate.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]]))
     except MessageNotModified:
         pass
     except Exception as e:
-        print(f"Callback Error: {e}")
+        print(f"[menu_nav] {e}")
+
+
+@Client.on_callback_query(filters.regex(r"^(audio_|fx_|acc_|util_|own_)"))
+async def action_placeholder(client, query: CallbackQuery):
+    await query.answer("This feature is coming soon!", show_alert=True)
+
+
+@Client.on_callback_query(filters.regex(r"^noop$"))
+async def noop(client, query: CallbackQuery):
+    await query.answer("Waiting for admin approval...", show_alert=True)
