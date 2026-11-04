@@ -74,7 +74,6 @@ async def start_cmd(client, message):
     is_owner = (user_id == Config.OWNER_ID)
     await message.reply_text("✨ <b>Welcome to Audio Forwarder</b> ✨\nSelect an option:", reply_markup=main_menu(is_owner))
 
-# ================= ROUTER =================
 @Client.on_callback_query(filters.regex(r"^menu_"))
 async def menu_nav(client, query: CallbackQuery):
     await query.answer()
@@ -104,15 +103,20 @@ async def account_actions(client, query: CallbackQuery):
     if action == "login":
         try:
             await client.send_message(query.message.chat.id, "📱 <b>Enter phone number:</b>\n<i>Format: +1234567890</i>\n\nType /cancel to abort.")
-            phone_msg = await client.listen(query.message.chat.id, timeout=60, filters=filters.text)
+            
+            # FIXED: Positional arguments
+            phone_msg = await client.listen(query.message.chat.id, filters.text, 60)
+            
             if phone_msg.text.lower() == "/cancel": return await phone_msg.reply_text("❌ Cancelled.")
             phone = phone_msg.text.strip()
 
             await client.send_message(query.message.chat.id, "🔑 <b>Enter OTP code:</b>\n<i>Format: 1 2 3 4 5</i>\n\nType /cancel to abort.")
-            otp_msg = await client.listen(query.message.chat.id, timeout=120, filters=filters.text)
+            
+            # FIXED: Positional arguments
+            otp_msg = await client.listen(query.message.chat.id, filters.text, 120)
+            
             if otp_msg.text.lower() == "/cancel": return await otp_msg.reply_text("❌ Cancelled.")
             
-            # Real Pyrogram OTP flow goes here later. Saving simulated session for now.
             await db.save_account(user_id, phone, "SIMULATED_SESSION")
             await otp_msg.reply_text("✅ <b>Account Logged In & Saved!</b>")
         except asyncio.TimeoutError:
