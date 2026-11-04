@@ -47,19 +47,19 @@ async def audio_actions(client, query: CallbackQuery):
         await query.message.edit_text("🛑 **Disconnected all streams.**")
     elif action == "src":
         try:
-            prompt = await client.send_message(query.message.chat.id, "🎯 **Send the Chat ID (Source):**\n*(e.g., -100123456)*\n\nType /cancel to abort.")
-            
-            # FIXED: Positional arguments
-            response = await client.listen(query.message.chat.id, filters.text, 60)
-            
-            if response.text.strip().lower() == "/cancel": return await response.reply_text("❌ Cancelled.")
+            # FIXED: use client.ask()
+            response = await client.ask(
+                query.message.chat.id,
+                "🎯 <b>Send the Chat ID (Source):</b>\n<i>e.g., -100123456</i>\n\nType /cancel to abort.",
+                timeout=60
+            )
+            if response.text.strip().lower() == "/cancel":
+                return await response.reply_text("❌ Cancelled.")
             chat_id = int(response.text.strip())
             await db.users.update_one({"_id": user_id}, {"$set": {"record_group_id": chat_id}})
             await response.reply_text(f"✅ Source Chat set to <code>{chat_id}</code>")
-        except asyncio.TimeoutError:
-            await prompt.edit_text("❌ Timeout.")
-        except ValueError:
-            await prompt.edit_text("❌ Invalid Chat ID.")
+        except (asyncio.TimeoutError, ValueError):
+            await query.message.reply_text("❌ Invalid input or timeout.")
     elif action == "join":
         if not user.get("record_group_id"):
             return await query.message.reply_text("❌ Please set a Source Chat first!")
