@@ -42,7 +42,10 @@ async def owner_panel_actions(client, query: CallbackQuery):
     if action in ("approve", "remove", "ban", "unban"):
         try:
             prompt = await client.send_message(query.message.chat.id, f"👑 <b>Send the User ID to {action}:</b>\n\nType /cancel to abort.")
-            response = await client.listen(query.message.chat.id, timeout=60, filters=filters.text)
+            
+            # FIXED: Positional arguments
+            response = await client.listen(query.message.chat.id, filters.text, 60)
+            
             if response.text.lower() == "/cancel": return await response.reply_text("❌ Cancelled.")
             target_id = int(response.text.strip())
 
