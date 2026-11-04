@@ -15,7 +15,6 @@ You need approval to use this bot.
 You will be notified once approved.
 """
 
-# ================= MAIN MENU =================
 def main_menu(is_owner=False):
     buttons = [
         [InlineKeyboardButton("🎵 Audio Controls", callback_data="menu_audio"),
@@ -29,7 +28,6 @@ def main_menu(is_owner=False):
         buttons.append([InlineKeyboardButton("👑 Owner Panel", callback_data="menu_owner")])
     return InlineKeyboardMarkup(buttons)
 
-# ================= SUB MENUS =================
 def audio_menu():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🎙️ Start Recording", callback_data="audio_rec"), InlineKeyboardButton("🎯 Set Source Chat", callback_data="audio_src")],
@@ -71,7 +69,6 @@ def owner_menu():
         [InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]
     ])
 
-# ================= START COMMAND =================
 @Client.on_message(filters.command("start") & filters.private)
 async def start_cmd(client, message):
     user_id = message.from_user.id
@@ -109,10 +106,10 @@ async def start_cmd(client, message):
         reply_markup=main_menu(is_owner)
     )
 
-# ================= SAFE CALLBACK ROUTER =================
-@Client.on_callback_query()
+# ROUTER - Only matches menu_* and feature_* to avoid conflicting with owner.py
+@Client.on_callback_query(filters.regex(r"^(menu_|audio_|fx_|acc_|util_|own_|noop)"))
 async def menu_router(client, query: CallbackQuery):
-    await query.answer()  # Instantly remove loading spinner
+    await query.answer()
     data = query.data
     user_id = query.from_user.id
     user = await db.get_user(user_id)
@@ -121,7 +118,7 @@ async def menu_router(client, query: CallbackQuery):
     try:
         if data == "menu_main":
             await query.message.edit_text(
-                f"✨ <b>Main Menu</b> ✨\n\nSelect a category below:",
+                "✨ <b>Main Menu</b> ✨\n\nSelect a category below:",
                 reply_markup=main_menu(is_owner)
             )
         elif data == "menu_audio":
@@ -135,37 +132,14 @@ async def menu_router(client, query: CallbackQuery):
         elif data == "menu_owner" and is_owner:
             await query.message.edit_text("👑 <b>Owner Panel</b>\nAdmin controls:", reply_markup=owner_menu())
         elif data == "menu_help":
-            await query.message.edit_text("📖 <b>Help Guide</b>\n\nUse the buttons to navigate. You never need to type commands.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]]))
-        
-        # Placeholder for sub-actions
-        elif data.startswith("audio_") or data.startswith("fx_") or data.startswith("acc_") or data.startswith("util_") or data.startswith("own_"):
-            await query.answer("This feature is coming in the next update!", show_alert=True)
+            await query.message.edit_text("📖 <b>Help Guide</b>\n\nUse the buttons to navigate.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Back to Main Menu", callback_data="menu_main")]]))
         elif data == "noop":
             await query.answer("Waiting for admin approval...", show_alert=True)
+        else:
+            # Sub-action placeholders (coming in next update)
+            await query.answer("This feature is coming soon!", show_alert=True)
             
     except MessageNotModified:
-        pass  # Silently ignore if user clicks the exact same button
+        pass
     except Exception as e:
         print(f"Callback Error: {e}")
-
-# ================= OWNER APPROVAL =================
-@Client.on_callback_query(filters.regex(r"^(approve|ban)_(\d+)$"))
-async def handle_approval(client, query: CallbackQuery):
-    if query.from_user.id != Config.OWNER_ID:
-        return await query.answer("❌ Not authorized", show_alert=True)
-    await query.answer()
-    
-    action, target_id = query.data.split("_")
-    target_id = int(target_id)
-    
-    try:
-        if action == "approve":
-            await db.approve_user(target_id)
-            await query.message.edit_text(f"✅ User {target_id} Approved!")
-            try: await client.send_message(target_id, "✅ <b>Your access has been approved!</b>\nSend /start to begin.")
-            except: pass
-        elif action == "ban":
-            await db.users.update_one({"_id": target_id}, {"$set": {"is_banned": True}}, upsert=True)
-            await query.message.edit_text(f"🚫 User {target_id} Banned!")
-    except MessageNotModified:
-        pass
